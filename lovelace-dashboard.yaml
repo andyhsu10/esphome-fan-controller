@@ -2,8 +2,8 @@
 # Go to:
 # ... > Edit Dashboard > ... > Raw Configuration Editor
 
-  - title: Console Fan
-    path: console-fan
+  - title: Synology DS925+ Fan
+    path: synology-ds925-plus-fan
     icon: mdi:fan
     badges: []
     cards:
@@ -22,26 +22,26 @@
             - type: entities
               title: Thermostat Fan (PID)
               entities:
-                - entity: climate.console_fan_thermostat
+                - entity: climate.synology_ds925_plus_fan_thermostat
             - type: vertical-stack
               cards:
                 - type: glance
                   entities:
-                    - entity: sensor.console_fan_is_in_deadband
+                    - entity: sensor.synology_ds925_plus_fan_is_in_deadband
                       name: in_deadband?
-                    - entity: sensor.console_fan_error_value
+                    - entity: sensor.synology_ds925_plus_fan_error_value
                       name: error
                       icon: mdi:equal
                 - type: glance
                   show_icon: false
                   entities:
-                    - entity: sensor.console_fan_output_value
+                    - entity: sensor.synology_ds925_plus_fan_output_value
                       name: output
-                    - entity: sensor.console_fan_p_term
+                    - entity: sensor.synology_ds925_plus_fan_p_term
                       name: p_term
-                    - entity: sensor.console_fan_i_term
+                    - entity: sensor.synology_ds925_plus_fan_i_term
                       name: i_term
-                    - entity: sensor.console_fan_d_term
+                    - entity: sensor.synology_ds925_plus_fan_d_term
                       name: d_term
       - type: vertical-stack
         cards:
@@ -53,7 +53,7 @@
             title: 3 hr
           - type: history-graph
             entities:
-              - entity: climate.console_fan_thermostat
+              - entity: climate.synology_ds925_plus_fan_thermostat
                 name: ' '
               - entity: sensor.back_door_device_temperature
                 name: outside
@@ -63,11 +63,11 @@
             hours_to_show: 3
       - type: entities
         entities:
-          - entity: sensor.console_fan_ip_address
-          - entity: sensor.console_fan_wifi_strength
-          - entity: sensor.console_fan_uptime_2
+          - entity: sensor.synology_ds925_plus_fan_ip_address
+          - entity: sensor.synology_ds925_plus_fan_wifi_strength
+          - entity: sensor.synology_ds925_plus_fan_uptime_2
           - entity: sensor.humidity_2
-          - entity: switch.console_fan_esp32_restart_2
+          - entity: switch.synology_ds925_plus_fan_esp32_restart_2
       - type: conditional
         conditions:
           - condition: state
