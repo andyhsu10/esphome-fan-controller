@@ -192,6 +192,11 @@ sensor:
     filters:
       - multiply: 0.5  # Depending on how many pulses the fan sends per round - should be 0.5 or 1 - try...
 
+  - platform: homeassistant
+    name: "NAS Thermostat Temperature"
+    entity_id: sensor.nas_thermostat_set_temperature
+    id: ha_thermo_temp
+
 ########################################################
 # START THE FAN CONTROLLER SETUP
 
@@ -292,6 +297,37 @@ output:
             id(manual_fan_control).speed / 100.0 : state*1.0;
         id(nas_fan_speed).set_level(write_val);
         id(fan_speed_pwm_voltage).publish_state(write_val*100.0);
+  
+  # LEDs for indicating the temperature
+  - platform: gpio
+    pin: 12
+    id: led_temp_low
+  - platform: gpio
+    pin: 13
+    id: led_temp_mid
+  - platform: gpio
+    pin: 32
+    id: led_temp_high
+
+# Logics for controlling the temperature LEDs
+interval:
+  - interval: 1s
+    then:
+      - lambda: |-
+          float temp = id(ha_thermo_temp).state;
+
+          // reset all LEDs
+          id(led_temp_low).turn_off();
+          id(led_temp_mid).turn_off();
+          id(led_temp_high).turn_off();
+
+          if (temp < 27.5) {
+            id(led_temp_low).turn_on();
+          } else if (temp >= 27.5 && temp <= 30.0) {
+            id(led_temp_mid).turn_on();
+          } else if (temp > 30.0) {
+            id(led_temp_high).turn_on();
+          }
 
 # If you turn this on, you can manually set the fan speed.
 # The PID will be ignored. This is done via the proxy_output.
