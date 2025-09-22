@@ -1,0 +1,136 @@
+views:
+  - title: Synology DS925+
+    type: sections
+    max_columns: 4
+    sections:
+      - type: grid
+        cards:
+          - type: entities
+            entities:
+              - entity: binary_sensor.an_tings_nas_security_status
+                name: Security Status
+              - entity: sensor.an_tings_nas_volume_1_status
+                name: Volume 1 - Status
+              - entity: sensor.an_tings_nas_volume_1_used_space
+                name: Volume 1 - Used Space
+              - entity: sensor.an_tings_nas_volume_1_volume_used
+                name: Volume 1 - Used Space (%)
+              - entity: sensor.an_tings_nas_volume_2_status
+                name: Volume 2 - Status
+              - entity: sensor.an_tings_nas_volume_2_used_space
+                name: Volume 2 - Used Space
+              - entity: sensor.an_tings_nas_volume_2_volume_used
+                name: Volume 2 - Used Space (%)
+              - entity: sensor.an_tings_nas_cpu_utilization_total
+                name: CPU Utilization
+              - entity: sensor.an_tings_nas_memory_usage_real
+                name: Memory Usage
+              - entity: sensor.an_tings_nas_download_throughput
+                name: Download Throughput
+              - entity: sensor.an_tings_nas_upload_throughput
+                name: Upload Throughput
+            title: Synology DS925+
+      - type: grid
+        cards:
+          - type: entities
+            entities:
+              - entity: fan.nas_fan_manual_fan_speed
+                name: Manual Fan Speed
+              - entity: sensor.nas_fan_fan_speed_pwm_voltage
+                name: Fan Speed (PWM Voltage)
+          - type: conditional
+            conditions:
+              - condition: state
+                entity: fan.nas_fan_manual_fan_speed
+                state_not: 'on'
+            card:
+              type: vertical-stack
+              cards:
+                - type: entities
+                  title: Thermostat Fan (PID)
+                  entities:
+                    - entity: climate.nas_fan_nas_fan_thermostat
+                      name: NAS Fan Thermostat
+                - type: vertical-stack
+                  cards:
+                    - type: glance
+                      entities:
+                        - entity: sensor.nas_fan_synology_ds925_fan_is_in_deadband
+                          name: In deadband?
+                        - entity: sensor.nas_fan_synology_ds925_fan_error_value
+                          name: Error
+                          icon: mdi:equal
+                    - type: glance
+                      show_icon: false
+                      entities:
+                        - entity: sensor.nas_fan_synology_ds925_fan_output_value
+                          name: Output
+                        - entity: sensor.nas_fan_synology_ds925_fan_p_term
+                          name: P Term
+                        - entity: sensor.nas_fan_synology_ds925_fan_i_term
+                          name: I Term
+                        - entity: sensor.nas_fan_synology_ds925_fan_d_term
+                          name: D Term
+          - type: thermostat
+            entity: climate.nas_fan_nas_fan_thermostat
+            name: Thermostat
+            show_current_as_primary: false
+      - type: grid
+        cards:
+          - type: vertical-stack
+            cards:
+              - type: history-graph
+                title: 12 hr
+                refresh_interval: 0
+                hours_to_show: 12
+                entities:
+                  - entity: sensor.nas_fan_fan_speed_pwm_voltage
+                    name: Fan Speed (PWM Voltage)
+              - type: history-graph
+                entities:
+                  - entity: climate.nas_fan_nas_fan_thermostat
+                    name: ' '
+                refresh_interval: 0
+                hours_to_show: 12
+      - type: grid
+        cards:
+          - type: entities
+            entities:
+              - entity: sensor.nas_fan_synology_ds925_fan_ip_address
+                name: IP Address
+              - entity: sensor.nas_fan_synology_ds925_fan_wifi_strength
+                name: WiFi Strength
+              - entity: sensor.nas_fan_synology_ds925_fan_uptime_2
+                name: Uptime
+              - entity: sensor.nas_fan_humidity
+                name: Humidity
+              - entity: switch.nas_fan_synology_ds925_fan_esp32_restart
+                name: Restart ESP32
+          - type: conditional
+            conditions:
+              - condition: state
+                entity: fan.nas_fan_manual_fan_speed
+                state_not: 'on'
+            card:
+              type: vertical-stack
+              cards:
+                - type: entities
+                  title: PID Controls Setup
+                  entities:
+                    - entity: number.nas_fan_kp
+                      name: Kp
+                    - entity: number.nas_fan_ki
+                      name: Ki
+                    - entity: number.nas_fan_kd
+                      name: Kd
+                    - entity: button.nas_fan_pid_climate_autotune
+                      name: PID Climate Autotune
+                - type: entities
+                  title: Deadband Parameters
+                  entities:
+                    - entity: number.nas_fan_deadband_threshold_low
+                      name: Threshold Low
+                    - entity: number.nas_fan_deadband_threshold_high
+                      name: Threshold High
+                    - entity: number.nas_fan_deadband_ki_multiplier
+                      name: Ki multiplier

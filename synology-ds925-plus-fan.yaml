@@ -2,7 +2,7 @@ substitutions:
   friendly_name: Synology DS925+ Fan
 
 esphome:
-  name: synology-ds925-plus-fan
+  name: nas-fan
 
 # Throttle writing parameters to the internal flash memory to reduce ESP memory wear / degradation
 preferences:
@@ -13,7 +13,6 @@ preferences:
 
 esp32:
   variant: esp32
-  board: denky32
   framework:
     type: arduino
 
@@ -26,6 +25,8 @@ logger:
 
 # default HA integration, OTA updater and backup http web portal
 api:
+  encryption:
+    key: !secret api_encryption_key
 
 ota:
   - platform: esphome
@@ -174,7 +175,7 @@ sensor:
       number: GPIO25   # Connect to any input PIN on the ESP
       mode: INPUT_PULLUP
     unit_of_measurement: 'RPM'
-    id: fan_speed
+    id: fan_speed_1
     name: $friendly_name Fan Speed 1
     accuracy_decimals: 0
     filters:
