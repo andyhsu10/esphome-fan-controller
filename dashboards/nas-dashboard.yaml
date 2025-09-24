@@ -38,6 +38,7 @@ views:
                 name: Manual Fan Speed
               - entity: sensor.nas_fan_fan_speed_pwm_voltage
                 name: Fan Speed (PWM Voltage)
+              - entity: sensor.nas_thermostat_set_temperature
           - type: conditional
             conditions:
               - condition: state
@@ -102,8 +103,14 @@ views:
                 name: WiFi Strength
               - entity: sensor.nas_fan_synology_ds925_fan_uptime_2
                 name: Uptime
-              - entity: sensor.nas_fan_humidity
-                name: Humidity
+              - entity: sensor.nas_fan_environment_temperature
+                name: Environment Temperature
+              - entity: sensor.nas_fan_environment_humidity
+                name: Environment Humidity
+              - entity: sensor.nas_fan_background_temperature
+                name: Background Temperature
+              - entity: sensor.nas_fan_background_humidity
+                name: Background Humidity
               - entity: switch.nas_fan_synology_ds925_fan_esp32_restart
                 name: Restart ESP32
           - type: conditional

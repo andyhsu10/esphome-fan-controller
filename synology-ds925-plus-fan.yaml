@@ -23,6 +23,11 @@ logger:
     climate: ERROR
     dht: WARN
 
+# Automatically blinks during boot (device not yet ready)
+status_led:
+  pin:
+    number: 26
+
 # default HA integration, OTA updater and backup http web portal
 api:
   encryption:
@@ -35,6 +40,12 @@ wifi:
   # Read the wifi/pass from secrets.yaml:
   ssid: !secret wifi_ssid
   password: !secret wifi_password
+
+globals:
+  - id: max_overheat_fan_limit_percentage
+    type: float
+    restore_value: yes
+    initial_value: '0.8'
 
 number:
   ## OPTIONAL:
@@ -121,6 +132,18 @@ number:
     optimistic: true
     set_action: 
       lambda: id(nas_thermostat).set_ki_multiplier( x );
+
+  - platform: template
+    name: "Background Overheat Max Fan Speed"
+    id: bg_overheat_max_fan_speed
+    min_value: 0.3
+    max_value: 0.9
+    step: 0.01
+    restore_value: true
+    initial_value: 0.8
+    set_action:
+      lambda: |-
+        id(max_overheat_fan_limit_percentage) = x;
 
 text_sensor:
 
@@ -234,27 +257,50 @@ sensor:
     id: in_deadband_term
     accuracy_decimals: 0
 
-  # GET TEMP/HUMIDITY FROM DHT11
+  # GET ENVIRONMENT TEMP/HUMIDITY FROM DHT22
   - platform: dht
     pin: GPIO14
     temperature:
-      name: "Temperature"
-      id: nas_fan_temperature
-      accuracy_decimals: 3
+      name: "Environment Temperature"
+      id: nas_fan_env_temperature
+      accuracy_decimals: 2
 
       # If you don't smooth the temperature readings 
       # the PID controller over reacts to small changes.
       filters:
-         - exponential_moving_average:  
-             alpha: 0.1
-             send_every: 1
+        - offset: -1.5
+        - exponential_moving_average:  
+            alpha: 0.1
+            send_every: 1
 
     humidity:
-      name: "Humidity"
-      id: nas_fan_humidity
+      name: "Environment Humidity"
+      id: nas_fan_env_humidity
 
-    # the DHT11 can only be read every 1s. Use 1.3s to be safe.
-    update_interval: 1.3s
+    # the DHT22 can only be read every 1s. Use 0.8s to be safe.
+    update_interval: 0.8s
+
+  # GET BACKGROUND TEMP/HUMIDITY FROM DHT22
+  - platform: dht
+    pin: GPIO15
+    temperature:
+      name: "Background Temperature"
+      id: nas_fan_bg_temperature
+      accuracy_decimals: 2
+
+      # If you don't smooth the temperature readings 
+      # the PID controller over reacts to small changes.
+      filters:
+        - exponential_moving_average:  
+            alpha: 0.1
+            send_every: 1
+
+    humidity:
+      name: "Background Humidity"
+      id: nas_fan_bg_humidity
+
+    # the DHT22 can only be read every 0.5s. Use 0.8s to be safe.
+    update_interval: 0.8s
 
   # Every time the fan speed is updated, this sensor will
   # also be updated for displaying on the frontend. 
@@ -263,6 +309,13 @@ sensor:
     name: "Fan Speed (PWM Voltage)"
     unit_of_measurement: "%"
     id: fan_speed_pwm_voltage
+
+binary_sensor:
+  - platform: template
+    name: "Background Overheat Mode"
+    id: bg_overheat_mode
+    lambda: |-
+      return id(nas_fan_bg_temperature).state >= id(nas_fan_env_temperature).state;
 
 output:
   # Wire this pin (19) into the PWM pin of your 12v fan
@@ -295,6 +348,16 @@ output:
         float write_val = 
           (id(manual_fan_control).state) ?
             id(manual_fan_control).speed / 100.0 : state*1.0;
+
+        float env_temp = id(nas_fan_env_temperature).state;
+        float bg_temp = id(nas_fan_bg_temperature).state;
+
+        if (bg_temp >= env_temp) {
+          // Background overheat mode, use the max_overheat_fan_limit_percentage
+          float bg_limit = id(bg_overheat_max_fan_speed).state;
+          write_val = fmax(0.2, write_val * bg_limit);
+        }
+
         id(nas_fan_speed).set_level(write_val);
         id(fan_speed_pwm_voltage).publish_state(write_val*100.0);
   
@@ -311,15 +374,26 @@ output:
 
 # Logics for controlling the temperature LEDs
 interval:
-  - interval: 1s
+  - interval: 0.5s
     then:
       - lambda: |-
+          auto reset_leds = []() {
+            id(led_temp_low).turn_off();
+            id(led_temp_mid).turn_off();
+            id(led_temp_high).turn_off();
+          };
+
+          if (!id(ha_thermo_temp).has_state()) {
+            // Turn off all the LEDs, when not reading the data
+            reset_leds();
+
+            return;
+          }
+
           float temp = id(ha_thermo_temp).state;
 
-          // reset all LEDs
-          id(led_temp_low).turn_off();
-          id(led_temp_mid).turn_off();
-          id(led_temp_high).turn_off();
+          // reset all temperature LEDs
+          reset_leds();
 
           if (temp < 27.5) {
             id(led_temp_low).turn_on();
@@ -343,7 +417,7 @@ climate:
   - platform: pid
     name: "NAS Fan Thermostat"
     id: nas_thermostat
-    sensor: nas_fan_temperature
+    sensor: nas_fan_env_temperature
 
     # It is summer right now, so 30c is a decent target.
     default_target_temperature: 30°C
