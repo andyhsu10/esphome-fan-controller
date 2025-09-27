@@ -41,12 +41,6 @@ wifi:
   ssid: !secret wifi_ssid
   password: !secret wifi_password
 
-globals:
-  - id: max_overheat_fan_limit_percentage
-    type: float
-    restore_value: yes
-    initial_value: '0.8'
-
 number:
   ## OPTIONAL:
   # RECEIVE KP, KI and KD parameters from input_text.kx helpers in 
@@ -134,16 +128,26 @@ number:
       lambda: id(nas_thermostat).set_ki_multiplier( x );
 
   - platform: template
-    name: "Background Overheat Max Fan Speed"
-    id: bg_overheat_max_fan_speed
+    name: "Overheat Max Fan Speed Percentage"
+    id: max_overheat_fan_limit_percentage
+    unit_of_measurement: "%"
     min_value: 0.3
     max_value: 0.9
     step: 0.01
+    optimistic: true
     restore_value: true
     initial_value: 0.8
-    set_action:
-      lambda: |-
-        id(max_overheat_fan_limit_percentage) = x;
+
+  - platform: template
+    name: "Cool Temperature Threshold"
+    id: cool_temp_threshold
+    unit_of_measurement: "°C"
+    min_value: 20.0
+    max_value: 40.0
+    step: 0.1
+    optimistic: true
+    restore_value: true
+    initial_value: 27.5
 
 text_sensor:
 
@@ -163,14 +167,14 @@ sensor:
   # Send WiFi signal strength & uptime to HA
   - platform: wifi_signal
     name: $friendly_name WiFi Strength
-    update_interval: 60s
+    update_interval: 20s
 
   # This is a bit of overkill. It sends a human readable 
   # uptime string 1h 41m 32s instead of 6092 seconds
   - platform: uptime
     name: $friendly_name Uptime
     id: uptime_sensor
-    update_interval: 60s
+    update_interval: 20s
     on_raw_value:
       then:
         - text_sensor.template.publish:
@@ -201,6 +205,7 @@ sensor:
     id: fan_speed_1
     name: $friendly_name Fan Speed 1
     accuracy_decimals: 0
+    update_interval: 15s
     filters:
       - multiply: 0.5  # Depending on how many pulses the fan sends per round - should be 0.5 or 1 - try...
 
@@ -212,6 +217,7 @@ sensor:
     id: fan_speed_2
     name: $friendly_name Fan Speed 2
     accuracy_decimals: 0
+    update_interval: 15s
     filters:
       - multiply: 0.5  # Depending on how many pulses the fan sends per round - should be 0.5 or 1 - try...
 
@@ -268,7 +274,7 @@ sensor:
       # If you don't smooth the temperature readings 
       # the PID controller over reacts to small changes.
       filters:
-        - offset: -1.5
+        - offset: -1.35
         - exponential_moving_average:  
             alpha: 0.1
             send_every: 1
@@ -277,8 +283,8 @@ sensor:
       name: "Environment Humidity"
       id: nas_fan_env_humidity
 
-    # the DHT22 can only be read every 1s. Use 0.8s to be safe.
-    update_interval: 0.8s
+    # the DHT22 can only be read every 0.5s.
+    update_interval: 2s
 
   # GET BACKGROUND TEMP/HUMIDITY FROM DHT22
   - platform: dht
@@ -291,6 +297,7 @@ sensor:
       # If you don't smooth the temperature readings 
       # the PID controller over reacts to small changes.
       filters:
+        - offset: 0.05
         - exponential_moving_average:  
             alpha: 0.1
             send_every: 1
@@ -299,8 +306,8 @@ sensor:
       name: "Background Humidity"
       id: nas_fan_bg_humidity
 
-    # the DHT22 can only be read every 0.5s. Use 0.8s to be safe.
-    update_interval: 0.8s
+    # the DHT22 can only be read every 0.5s.
+    update_interval: 2s
 
   # Every time the fan speed is updated, this sensor will
   # also be updated for displaying on the frontend. 
@@ -315,7 +322,11 @@ binary_sensor:
     name: "Background Overheat Mode"
     id: bg_overheat_mode
     lambda: |-
-      return id(nas_fan_bg_temperature).state >= id(nas_fan_env_temperature).state;
+      float thermo_temp = id(ha_thermo_temp).state;
+      float env_temp = id(nas_fan_env_temperature).state;
+      float bg_temp = id(nas_fan_bg_temperature).state;
+
+      return env_temp > thermo_temp && int(bg_temp) > int(env_temp);
 
 output:
   # Wire this pin (19) into the PWM pin of your 12v fan
@@ -349,12 +360,13 @@ output:
           (id(manual_fan_control).state) ?
             id(manual_fan_control).speed / 100.0 : state*1.0;
 
+        float thermo_temp = id(ha_thermo_temp).state;
         float env_temp = id(nas_fan_env_temperature).state;
         float bg_temp = id(nas_fan_bg_temperature).state;
 
-        if (bg_temp >= env_temp) {
-          // Background overheat mode, use the max_overheat_fan_limit_percentage
-          float bg_limit = id(bg_overheat_max_fan_speed).state;
+        // Background overheat mode, use the max_overheat_fan_limit_percentage
+        if (env_temp > thermo_temp && int(bg_temp) > int(env_temp)) {
+          float bg_limit = id(max_overheat_fan_limit_percentage).state;
           write_val = fmax(0.2, write_val * bg_limit);
         }
 
@@ -383,23 +395,25 @@ interval:
             id(led_temp_high).turn_off();
           };
 
+          // Turn off all the LEDs, when not reading the data from HA
           if (!id(ha_thermo_temp).has_state()) {
-            // Turn off all the LEDs, when not reading the data
             reset_leds();
 
             return;
           }
 
-          float temp = id(ha_thermo_temp).state;
+          float env_temp = id(nas_fan_env_temperature).state;
+          float cool_temp_thres = id(cool_temp_threshold).state;
+          float hot_temp_thres = id(ha_thermo_temp).state;
 
           // reset all temperature LEDs
           reset_leds();
 
-          if (temp < 27.5) {
+          if (env_temp < cool_temp_thres) {
             id(led_temp_low).turn_on();
-          } else if (temp >= 27.5 && temp <= 30.0) {
+          } else if (env_temp >= cool_temp_thres && env_temp <= hot_temp_thres) {
             id(led_temp_mid).turn_on();
-          } else if (temp > 30.0) {
+          } else if (env_temp > hot_temp_thres) {
             id(led_temp_high).turn_on();
           }
 
@@ -422,7 +436,6 @@ climate:
     # It is summer right now, so 30c is a decent target.
     default_target_temperature: 30°C
     cool_output: proxy_output
-    # cool_output: nas_fan_speed
 
     # ON state change, publish the values to the x_term numbers defined 
     # above, so that they can be viewed in HA

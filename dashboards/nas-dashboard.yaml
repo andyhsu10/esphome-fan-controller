@@ -38,7 +38,16 @@ views:
                 name: Manual Fan Speed
               - entity: sensor.nas_fan_fan_speed_pwm_voltage
                 name: Fan Speed (PWM Voltage)
-              - entity: sensor.nas_thermostat_set_temperature
+              - entity: sensor.nas_fan_synology_ds925_fan_fan_speed_1
+                name: Fan Speed 1
+                icon: mdi:fan-speed-1
+              - entity: sensor.nas_fan_synology_ds925_fan_fan_speed_2
+                name: Fan Speed 2
+                icon: mdi:fan-speed-2
+          - type: thermostat
+            entity: climate.nas_fan_nas_fan_thermostat
+            name: Thermostat
+            show_current_as_primary: false
           - type: conditional
             conditions:
               - condition: state
@@ -72,27 +81,43 @@ views:
                           name: I Term
                         - entity: sensor.nas_fan_synology_ds925_fan_d_term
                           name: D Term
-          - type: thermostat
-            entity: climate.nas_fan_nas_fan_thermostat
-            name: Thermostat
-            show_current_as_primary: false
       - type: grid
         cards:
+          - type: entities
+            entities:
+              - entity: number.nas_fan_cool_temperature_threshold
+                name: Medium Temperature Threshold
+                icon: mdi:snowflake-thermometer
+                secondary_info: none
+              - entity: sensor.nas_thermostat_set_temperature
+                name: High Temperature Threshold
+                icon: mdi:sun-thermometer
           - type: vertical-stack
             cards:
               - type: history-graph
-                title: 12 hr
+                entities:
+                  - entity: climate.nas_fan_nas_fan_thermostat
+                    name: ' '
+                  - entity: sensor.nas_fan_background_temperature
+                    name: background temperature
+                refresh_interval: 0
+                hours_to_show: 12
+                title: Temperature (12 hr)
+              - type: history-graph
+                entities:
+                  - entity: sensor.nas_fan_synology_ds925_fan_fan_speed_1
+                    name: Fan 1
+                  - entity: sensor.nas_fan_synology_ds925_fan_fan_speed_2
+                    name: Fan 2
+                title: Fan Speed (12hr)
+                hours_to_show: 12
+              - type: history-graph
+                title: Fan Speed Voltage (12 hr)
                 refresh_interval: 0
                 hours_to_show: 12
                 entities:
                   - entity: sensor.nas_fan_fan_speed_pwm_voltage
                     name: Fan Speed (PWM Voltage)
-              - type: history-graph
-                entities:
-                  - entity: climate.nas_fan_nas_fan_thermostat
-                    name: ' '
-                refresh_interval: 0
-                hours_to_show: 12
       - type: grid
         cards:
           - type: entities
@@ -103,6 +128,12 @@ views:
                 name: WiFi Strength
               - entity: sensor.nas_fan_synology_ds925_fan_uptime_2
                 name: Uptime
+              - entity: binary_sensor.nas_fan_background_overheat_mode
+                name: Overheat Mode
+                icon: mdi:heat-wave
+              - entity: number.nas_fan_overheat_max_fan_speed_percentage
+                name: Overheat Max Fan Speed Percentage
+                icon: mdi:fire
               - entity: sensor.nas_fan_environment_temperature
                 name: Environment Temperature
               - entity: sensor.nas_fan_environment_humidity
