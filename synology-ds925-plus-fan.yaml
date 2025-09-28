@@ -26,7 +26,7 @@ logger:
 # Automatically blinks during boot (device not yet ready)
 status_led:
   pin:
-    number: 26
+    number: 12
 
 # default HA integration, OTA updater and backup http web portal
 api:
@@ -199,7 +199,7 @@ sensor:
   # See instructions here: https://esphome.io/components/sensor/pulse_counter.html
   - platform: pulse_counter
     pin: 
-      number: GPIO25   # Connect to any input PIN on the ESP
+      number: GPIO21   # Connect to any input PIN on the ESP
       mode: INPUT_PULLUP
     unit_of_measurement: 'RPM'
     id: fan_speed_1
@@ -211,7 +211,7 @@ sensor:
 
   - platform: pulse_counter
     pin: 
-      number: GPIO33   # Connect to any input PIN on the ESP
+      number: GPIO19   # Connect to any input PIN on the ESP
       mode: INPUT_PULLUP
     unit_of_measurement: 'RPM'
     id: fan_speed_2
@@ -265,7 +265,7 @@ sensor:
 
   # GET ENVIRONMENT TEMP/HUMIDITY FROM DHT22
   - platform: dht
-    pin: GPIO14
+    pin: GPIO13
     temperature:
       name: "Environment Temperature"
       id: nas_fan_env_temperature
@@ -274,7 +274,7 @@ sensor:
       # If you don't smooth the temperature readings 
       # the PID controller over reacts to small changes.
       filters:
-        - offset: -1.35
+        - offset: -1.1
         - exponential_moving_average:  
             alpha: 0.1
             send_every: 1
@@ -297,7 +297,7 @@ sensor:
       # If you don't smooth the temperature readings 
       # the PID controller over reacts to small changes.
       filters:
-        - offset: 0.05
+        - offset: 0.2
         - exponential_moving_average:  
             alpha: 0.1
             send_every: 1
@@ -329,11 +329,11 @@ binary_sensor:
       return env_temp > thermo_temp && int(bg_temp) > int(env_temp);
 
 output:
-  # Wire this pin (19) into the PWM pin of your 12v fan
+  # Wire this pin (23) into the PWM pin of your 12v fan
   # ledc is the name of the pwm output system on an esp32
   - platform: ledc
     id: nas_fan_speed
-    pin: GPIO27
+    pin: GPIO23
 
     # 25KHz is standard PC fan frequency, minimises buzzing
     frequency: "25000 Hz" 
@@ -375,10 +375,10 @@ output:
   
   # LEDs for indicating the temperature
   - platform: gpio
-    pin: 12
+    pin: 27
     id: led_temp_low
   - platform: gpio
-    pin: 13
+    pin: 25
     id: led_temp_mid
   - platform: gpio
     pin: 32
